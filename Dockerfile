@@ -27,6 +27,7 @@ RUN apk add --no-cache \
 # Setup directory for mise
 RUN mkdir -p /opt/mise/bin && \
     mkdir -p /opt/mise/shims && \
+    mkdir -p /opt/mise/cache && \
     chown -R 1000:1000 /opt/mise
 
 USER 1000
@@ -35,6 +36,9 @@ USER 1000
 ENV MISE_DATA_DIR=/opt/mise
 ENV MISE_CONFIG_FILE=/opt/mise/config.toml
 ENV MISE_INSTALL_PATH=/opt/mise/bin/mise
+ENV MISE_CACHE_DIR=/opt/mise/cache
+ENV XDG_CACHE_HOME=/opt/mise/cache
+ENV HOME=/opt/mise
 ENV PATH="/opt/mise/bin:/opt/mise/shims:$PATH"
 
 # Install mise
