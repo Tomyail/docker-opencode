@@ -1,36 +1,40 @@
-FROM debian:bookworm-slim
+FROM ghcr.io/anomalyco/opencode:0.0.0-dev-202602101247
 
-ARG DEBIAN_FRONTEND=noninteractive
+USER root
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+# Install dependencies using apk (verified to be available in base image)
+RUN apk add --no-cache \
     bash \
-    ca-certificates \
     curl \
     git \
     nodejs \
     npm \
-    openssh-client \
+    openssh \
     python3 \
-    python3-pip \
+    py3-pip \
     ripgrep \
-    xz-utils \
-    unzip && \
-    rm -rf /var/lib/apt/lists/*
+    build-base \
+    linux-headers
 
-# Install prebuilt opencode binary from the official installer.
-RUN curl -fsSL https://opencode.ai/install | OPENCODE_INSTALL_DIR=/usr/local/bin bash
+# Setup directory for mise (optional, providing environment isolation)
+RUN mkdir -p /opt/mise/bin && \
+    mkdir -p /opt/mise/shims && \
+    chown -R 1000:1000 /opt/mise
 
-RUN if [ -x /usr/local/bin/opencode ]; then \
-      echo "opencode installed to /usr/local/bin"; \
-    elif [ -x /root/.opencode/bin/opencode ]; then \
-      ln -sf /root/.opencode/bin/opencode /usr/local/bin/opencode; \
-    else \
-      echo "opencode binary not found after install" && exit 1; \
-    fi
+USER 1000
 
-ENV PATH="/root/.opencode/bin:/usr/local/bin:${PATH}"
+# Configure environment variables for mise
+ENV MISE_DATA_DIR=/opt/mise
+ENV MISE_CONFIG_FILE=/opt/mise/config.toml
+ENV MISE_INSTALL_PATH=/opt/mise/bin/mise
+ENV PATH="/opt/mise/bin:/opt/mise/shims:$PATH"
 
-RUN opencode --version
+# Install mise
+RUN curl https://mise.run | sh
 
-ENTRYPOINT ["opencode"]
+# Install Python and Node.js via mise as requested
+RUN mise use --global python@3.12 && \
+    mise use --global nodejs@lts
+
+# Verify installation
+RUN python --version && node --version
