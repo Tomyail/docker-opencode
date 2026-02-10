@@ -1,40 +1,40 @@
-FROM ghcr.io/anomalyco/opencode:0.0.0-dev-202602101247
+FROM debian:bookworm-slim
 
-USER root
+ARG DEBIAN_FRONTEND=noninteractive
 
-# Install dependencies using apk (verified to be available in base image)
-RUN apk add --no-cache \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
     bash \
+    ca-certificates \
     curl \
     git \
     nodejs \
     npm \
-    openssh \
+    openssh-client \
     python3 \
-    py3-pip \
+    python3-pip \
     ripgrep \
-    build-base \
-    linux-headers
+    xz-utils \
+    unzip && \
+    rm -rf /var/lib/apt/lists/*
 
-# Setup directory for mise (optional, providing environment isolation)
-RUN mkdir -p /opt/mise/bin && \
-    mkdir -p /opt/mise/shims && \
-    chown -R 1000:1000 /opt/mise
+# Install prebuilt opencode binary from the official installer.
+RUN curl -fsSL https://opencode.ai/install | OPENCODE_INSTALL_DIR=/usr/local/bin bash
 
-USER 1000
+# The installer may leave /usr/local/bin/opencode as a symlink to /root/.opencode/bin/opencode.
+# Dereference it into a real binary so mounting /root in Kubernetes won't break startup.
+RUN if [ -x /usr/local/bin/opencode ]; then \
+      cp "$(readlink -f /usr/local/bin/opencode)" /usr/local/bin/opencode.real; \
+    elif [ -x /root/.opencode/bin/opencode ]; then \
+      cp /root/.opencode/bin/opencode /usr/local/bin/opencode.real; \
+    else \
+      echo "opencode binary not found after install" && exit 1; \
+    fi && \
+    chmod +x /usr/local/bin/opencode.real && \
+    mv -f /usr/local/bin/opencode.real /usr/local/bin/opencode
 
-# Configure environment variables for mise
-ENV MISE_DATA_DIR=/opt/mise
-ENV MISE_CONFIG_FILE=/opt/mise/config.toml
-ENV MISE_INSTALL_PATH=/opt/mise/bin/mise
-ENV PATH="/opt/mise/bin:/opt/mise/shims:$PATH"
+ENV PATH="/usr/local/bin:${PATH}"
 
-# Install mise
-RUN curl https://mise.run | sh
+RUN /usr/local/bin/opencode --version
 
-# Install Python and Node.js via mise as requested
-RUN mise use --global python@3.12 && \
-    mise use --global nodejs@lts
-
-# Verify installation
-RUN python --version && node --version
+ENTRYPOINT ["/usr/local/bin/opencode"]
