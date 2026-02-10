@@ -2,26 +2,27 @@ FROM ghcr.io/anomalyco/opencode:0.0.0-dev-202602101247
 
 USER root
 
-# Install dependencies for building Python/Node
-RUN apt-get update && apt-get install -y \
+# Install dependencies for building tools (Alpine version)
+RUN apk add --no-cache \
     curl \
     git \
-    build-essential \
-    libssl-dev \
-    zlib1g-dev \
-    libbz2-dev \
-    libreadline-dev \
-    libsqlite3-dev \
+    build-base \
+    openssl-dev \
+    zlib-dev \
+    bzip2-dev \
+    readline-dev \
+    sqlite-dev \
     wget \
     llvm \
-    libncursesw5-dev \
-    xz-utils \
+    ncurses-dev \
+    xz-dev \
     tk-dev \
     libxml2-dev \
-    libxmlsec1-dev \
+    libxml2-utils \
     libffi-dev \
-    liblzma-dev \
-    && rm -rf /var/lib/apt/lists/*
+    bash \
+    openssh \
+    linux-headers
 
 # Setup directory for mise
 RUN mkdir -p /opt/mise/bin && \
