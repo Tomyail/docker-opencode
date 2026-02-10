@@ -1,52 +1,36 @@
-FROM ghcr.io/anomalyco/opencode:0.0.0-dev-202602101247
+FROM debian:bookworm-slim
 
-USER root
+ARG DEBIAN_FRONTEND=noninteractive
 
-# Install dependencies for building tools (Alpine version)
-RUN apk add --no-cache \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    bash \
+    ca-certificates \
     curl \
     git \
-    build-base \
-    openssl-dev \
-    zlib-dev \
-    bzip2-dev \
-    readline-dev \
-    sqlite-dev \
-    wget \
-    llvm \
-    ncurses-dev \
-    xz-dev \
-    tk-dev \
-    libxml2-dev \
-    libxml2-utils \
-    libffi-dev \
-    bash \
-    openssh \
-    linux-headers
+    nodejs \
+    npm \
+    openssh-client \
+    python3 \
+    python3-pip \
+    ripgrep \
+    xz-utils \
+    unzip && \
+    rm -rf /var/lib/apt/lists/*
 
-# Setup directory for mise
-RUN mkdir -p /opt/mise/bin && \
-    mkdir -p /opt/mise/shims && \
-    mkdir -p /opt/mise/cache && \
-    chown -R 1000:1000 /opt/mise
+# Install prebuilt opencode binary from the official installer.
+RUN curl -fsSL https://opencode.ai/install | OPENCODE_INSTALL_DIR=/usr/local/bin bash
 
-USER 1000
+RUN if [ -x /usr/local/bin/opencode ]; then \
+      echo "opencode installed to /usr/local/bin"; \
+    elif [ -x /root/.opencode/bin/opencode ]; then \
+      ln -sf /root/.opencode/bin/opencode /usr/local/bin/opencode; \
+    else \
+      echo "opencode binary not found after install" && exit 1; \
+    fi
 
-# Configure environment variables for mise
-ENV MISE_DATA_DIR=/opt/mise
-ENV MISE_CONFIG_FILE=/opt/mise/config.toml
-ENV MISE_INSTALL_PATH=/opt/mise/bin/mise
-ENV MISE_CACHE_DIR=/opt/mise/cache
-ENV XDG_CACHE_HOME=/opt/mise/cache
-ENV HOME=/opt/mise
-ENV PATH="/opt/mise/bin:/opt/mise/shims:$PATH"
+ENV PATH="/root/.opencode/bin:/usr/local/bin:${PATH}"
 
-# Install mise
-RUN curl https://mise.run | sh
+RUN opencode --version
 
-# Install Python and Node.js
-RUN mise use --global python@3.12 && \
-    mise use --global nodejs@lts
-
-# Verify installation
-RUN python --version && node --version
+ENTRYPOINT ["opencode"]
